@@ -1,0 +1,6 @@
+{
+  "name": "Floating Widget Studio",
+  "description": "Android Floating Chat-Head Widget with interactive simulator and full Kotlin source code suite",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
