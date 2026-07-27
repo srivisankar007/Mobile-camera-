@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ZoomIn, ZoomOut, Share2, Download, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, Share2, Download, RotateCcw, Upload, Camera } from 'lucide-react';
 
 interface ImageViewerScreenProps {
   imageUrl: string;
   onBack: () => void;
+  onUploadImage?: (newUrl: string) => void;
 }
 
-export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, onBack }) => {
+export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, onBack, onUploadImage }) => {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -16,6 +17,21 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result && onUploadImage) {
+          const newUrl = event.target.result as string;
+          onUploadImage(newUrl);
+          showToast('Uploaded new selfie/photo!');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -50,7 +66,7 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
       try {
         await navigator.share({
           title: 'Floating Widget Image',
-          text: 'Check out this avatar from Floating Widget App!',
+          text: 'Check out this photo from Floating Widget App!',
           url: imageUrl,
         });
       } catch {
@@ -76,9 +92,13 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <span className="text-xs font-semibold tracking-wider text-slate-300">FULLSCREEN IMAGE</span>
+        <span className="text-xs font-semibold tracking-wider text-slate-300">FULLSCREEN PHOTO</span>
 
         <div className="flex items-center gap-1">
+          <label className="p-2 rounded-full hover:bg-white/10 active:scale-95 transition-all text-indigo-400 cursor-pointer" title="Upload Photo">
+            <Upload className="w-4 h-4" />
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+          </label>
           <button
             onClick={handleShare}
             className="p-2 rounded-full hover:bg-white/10 active:scale-95 transition-all text-slate-200"
@@ -98,7 +118,7 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
 
       {/* Main Zoomable Image Canvas */}
       <div
-        className="relative flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
+        className="relative flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing p-2"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -111,13 +131,17 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
             transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
             transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
           }}
-          className="max-w-full max-h-[80%] object-contain pointer-events-none rounded-2xl shadow-2xl"
+          className="max-w-full max-h-[85%] object-contain pointer-events-none rounded-2xl shadow-2xl border border-white/10"
         />
       </div>
 
-      {/* Bottom Floating Zoom Controls */}
-      <div className="z-20 p-3 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between text-xs px-6">
-        <span className="text-slate-400 font-mono">Zoom: {(zoom * 100).toFixed(0)}%</span>
+      {/* Bottom Floating Zoom & Upload Controls */}
+      <div className="z-20 p-3 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between text-xs px-4 gap-2">
+        <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full cursor-pointer shadow-lg active:scale-95 transition-all">
+          <Camera className="w-3.5 h-3.5" />
+          <span>Upload Photo</span>
+          <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+        </label>
 
         <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-xl">
           <button
@@ -133,10 +157,10 @@ export const ImageViewerScreen: React.FC<ImageViewerScreenProps> = ({ imageUrl, 
               setZoom(1);
               setPan({ x: 0, y: 0 });
             }}
-            className="p-1.5 text-slate-300 hover:text-white active:scale-90"
+            className="p-1.5 text-slate-300 hover:text-white active:scale-90 text-[10px] font-mono"
             title="Reset Zoom"
           >
-            <RotateCcw className="w-4 h-4" />
+            {(zoom * 100).toFixed(0)}%
           </button>
 
           <button

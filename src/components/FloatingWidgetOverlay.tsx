@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Maximize2, Image as ImageIcon, Settings, EyeOff, Power, Camera, Aperture, RefreshCw, Focus } from 'lucide-react';
+import { X, Maximize2, Image as ImageIcon, Settings, EyeOff, Power, Camera, Aperture, RefreshCw, Focus, Upload } from 'lucide-react';
 import { WidgetSettings } from '../types/android';
 
 interface FloatingWidgetOverlayProps {
@@ -11,6 +11,7 @@ interface FloatingWidgetOverlayProps {
   onPositionChange: (x: number, y: number) => void;
   onToggleCameraMode?: (enabled: boolean) => void;
   onToggleViewportOverlay?: (enabled: boolean) => void;
+  onUploadImage?: (newUrl: string) => void;
 }
 
 export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
@@ -21,8 +22,10 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   onPositionChange,
   onToggleCameraMode,
   onToggleViewportOverlay,
+  onUploadImage,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [posX, setPosX] = useState(settings.positionX || 20);
   const [posY, setPosY] = useState(settings.positionY || 120);
   const [isDragging, setIsDragging] = useState(false);
@@ -31,6 +34,7 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   const [isVibrating, setIsVibrating] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(settings.isCameraModeEnabled || false);
   const [cameraFlash, setCameraFlash] = useState(false);
+  const [useWebcamStream, setUseWebcamStream] = useState(false);
 
   const dragStartPos = useRef({ x: 0, y: 0 });
   const initialWidgetPos = useRef({ x: 0, y: 0 });
@@ -39,6 +43,42 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   const lastTapTimeRef = useRef<number>(0);
 
   const isViewportMode = !!settings.isViewportOverlay;
+
+  // Sync camera active state with settings
+  useEffect(() => {
+    setIsCameraActive(!!settings.isCameraModeEnabled);
+  }, [settings.isCameraModeEnabled]);
+
+  // Request browser webcam for live front camera feed when active
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    if (isCameraActive) {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ video: { facingMode: 'user' } })
+          .then((s) => {
+            stream = s;
+            if (videoRef.current) {
+              videoRef.current.srcObject = s;
+              setUseWebcamStream(true);
+            }
+          })
+          .catch(() => {
+            setUseWebcamStream(false);
+          });
+      } else {
+        setUseWebcamStream(false);
+      }
+    } else {
+      setUseWebcamStream(false);
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [isCameraActive]);
 
   const getBounds = () => {
     if (isViewportMode) {
@@ -223,13 +263,23 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
           }`}
         >
           {isCameraActive ? (
-            /* Live Camera Face Preview Simulation */
+            /* Live Camera Face Preview / Uploaded Photo */
             <div className="relative w-full h-full rounded-full bg-slate-950 overflow-hidden flex items-center justify-center">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80"
-                alt="Live Camera Face Feed"
-                className="w-full h-full object-cover rounded-full scale-110"
-              />
+              {useWebcamStream ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover rounded-full scale-110 -scale-x-100 pointer-events-none"
+                />
+              ) : (
+                <img
+                  src={settings.selectedImageUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'}
+                  alt="Front Camera Feed"
+                  className="w-full h-full object-cover rounded-full scale-110 pointer-events-none"
+                />
+              )}
               
               {/* Camera Gridline Overlay */}
               <div className="absolute inset-0 border border-emerald-400/30 rounded-full flex items-center justify-center pointer-events-none">
@@ -343,6 +393,29 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
                 <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
                 Open Image Viewer
               </button>
+
+              <label className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-600/30 text-indigo-300 rounded-lg transition-colors text-left font-medium cursor-pointer">
+                <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Upload New Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    setShowContextMenu(false);
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        if (event.target?.result && onUploadImage) {
+                          onUploadImage(event.target.result as string);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
 
               <button
                 onClick={() => {

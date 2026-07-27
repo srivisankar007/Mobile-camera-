@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wifi, Battery, ShieldAlert, Play, Square, Settings as SettingsIcon, Image as ImageIcon, ChevronDown, Sparkles } from 'lucide-react';
+import { Wifi, Battery, ShieldAlert, Play, Square, Settings as SettingsIcon, Image as ImageIcon, ChevronDown, Sparkles, Upload } from 'lucide-react';
 import { WidgetSettings, FloatingWidgetState, SimulatorScreen } from '../types/android';
 import { FloatingWidgetOverlay } from './FloatingWidgetOverlay';
 import { ImageViewerScreen } from './ImageViewerScreen';
@@ -189,6 +189,28 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
                     <span>Configure Settings</span>
                   </button>
 
+                  <label className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-200 font-semibold rounded-xl border border-indigo-700/50 flex items-center justify-center gap-2 transition-all active:scale-98 text-xs cursor-pointer shadow-sm">
+                    <Upload className="w-4 h-4 text-indigo-400" />
+                    <span>Upload Front Camera Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result) {
+                              onUpdateSettings({ selectedImageUrl: event.target.result as string });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+
                   <button
                     onClick={() => setCurrentScreen('image_viewer')}
                     className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold rounded-xl border border-slate-800 flex items-center justify-center gap-2 transition-all text-xs cursor-pointer"
@@ -220,6 +242,7 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
             <ImageViewerScreen
               imageUrl={settings.selectedImageUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'}
               onBack={() => setCurrentScreen('main')}
+              onUploadImage={(newUrl) => onUpdateSettings({ selectedImageUrl: newUrl })}
             />
           )}
 
@@ -233,6 +256,7 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
               onPositionChange={(x, y) => onUpdateSettings({ positionX: x, positionY: y })}
               onToggleCameraMode={(enabled) => onUpdateSettings({ isCameraModeEnabled: enabled })}
               onToggleViewportOverlay={(enabled) => onUpdateSettings({ isViewportOverlay: enabled })}
+              onUploadImage={(newUrl) => onUpdateSettings({ selectedImageUrl: newUrl })}
             />
           )}
 
