@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Smartphone, Code2, Layers, Download, Play, Square, Settings, ShieldCheck, Sparkles, RefreshCw, CheckCircle, Info, Upload, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Smartphone, Code2, Layers, Download, Play, Square, Settings, ShieldCheck, Sparkles, RefreshCw, CheckCircle, Info, Upload, Image as ImageIcon, Server } from 'lucide-react';
 import { WidgetSettings, FloatingWidgetState } from './types/android';
 import { PhoneSimulator } from './components/PhoneSimulator';
 import { CodeExplorer } from './components/CodeExplorer';
@@ -8,6 +8,17 @@ import { downloadAndroidProjectZip } from './utils/zipExporter';
 export default function App() {
   const [activeTab, setActiveTab] = useState<'simulator' | 'code' | 'specs'>('simulator');
   const [displayMode, setDisplayMode] = useState<'phone' | 'split' | 'controls'>('split');
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d && d.status === 'ok') setServerOnline(true);
+        else setServerOnline(false);
+      })
+      .catch(() => setServerOnline(false));
+  }, []);
 
   const [widgetSettings, setWidgetSettings] = useState<WidgetSettings>({
     size: 'medium',
@@ -64,6 +75,14 @@ export default function App() {
                   <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono px-2 py-0.5 rounded-full font-semibold">
                     Kotlin MVVM
                   </span>
+                  {serverOnline !== null && (
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 border ${
+                      serverOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-300'
+                    }`}>
+                      <Server className="w-3 h-3" />
+                      <span>{serverOnline ? 'Backend API Ready' : 'Client Mode'}</span>
+                    </span>
+                  )}
                 </h1>
                 <p className="text-[11px] sm:text-xs text-slate-500">Chat-Head Style System Overlay & Full Code Suite</p>
               </div>
