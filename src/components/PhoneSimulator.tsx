@@ -232,6 +232,7 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
               onCloseWidget={handleStopService}
               onPositionChange={(x, y) => onUpdateSettings({ positionX: x, positionY: y })}
               onToggleCameraMode={(enabled) => onUpdateSettings({ isCameraModeEnabled: enabled })}
+              onToggleViewportOverlay={(enabled) => onUpdateSettings({ isViewportOverlay: enabled })}
             />
           )}
 

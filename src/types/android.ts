@@ -11,6 +11,7 @@ export interface WidgetSettings {
   badgeCount: number;
   selectedImageUrl: string;
   isCameraModeEnabled: boolean;
+  isViewportOverlay?: boolean; // When true, floats over the entire screen/page window
 }
 
 export interface AndroidFile {

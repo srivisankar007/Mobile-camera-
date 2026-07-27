@@ -204,6 +204,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             />
           </div>
 
+          {/* Move Anywhere / Viewport Overlay Switch */}
+          <div className="flex items-center justify-between p-2.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
+            <div>
+              <p className="font-semibold text-indigo-300">Move Anywhere on Screen</p>
+              <p className="text-[11px] text-slate-300">Detach widget to drag across full desktop/window</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={!!settings.isViewportOverlay}
+              onChange={(e) => onUpdateSettings({ isViewportOverlay: e.target.checked })}
+              className="w-4.5 h-4.5 accent-indigo-500 rounded cursor-pointer"
+            />
+          </div>
+
           {/* Theme Mode */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

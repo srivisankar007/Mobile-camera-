@@ -283,6 +283,19 @@ export default function App() {
                       className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                     />
                   </div>
+
+                  <div className="flex items-center justify-between p-2.5 bg-indigo-50/80 border border-indigo-200 rounded-xl">
+                    <div>
+                      <span className="font-bold text-indigo-900 block">Move Anywhere on Screen</span>
+                      <span className="text-[11px] text-indigo-700">Detach widget to drag across entire window</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={!!widgetSettings.isViewportOverlay}
+                      onChange={(e) => handleUpdateSettings({ isViewportOverlay: e.target.checked })}
+                      className="w-4.5 h-4.5 accent-indigo-600 rounded cursor-pointer"
+                    />
+                  </div>
                 </div>
 
                 <button

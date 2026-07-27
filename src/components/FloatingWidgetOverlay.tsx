@@ -10,6 +10,7 @@ interface FloatingWidgetOverlayProps {
   onCloseWidget: () => void;
   onPositionChange: (x: number, y: number) => void;
   onToggleCameraMode?: (enabled: boolean) => void;
+  onToggleViewportOverlay?: (enabled: boolean) => void;
 }
 
 export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
@@ -19,6 +20,7 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   onCloseWidget,
   onPositionChange,
   onToggleCameraMode,
+  onToggleViewportOverlay,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [posX, setPosX] = useState(settings.positionX || 20);
@@ -35,6 +37,24 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   const isClickRef = useRef(true);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapTimeRef = useRef<number>(0);
+
+  const isViewportMode = !!settings.isViewportOverlay;
+
+  const getBounds = () => {
+    if (isViewportMode) {
+      return {
+        width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+        height: typeof window !== 'undefined' ? window.innerHeight : 800,
+        minY: 0,
+      };
+    }
+    const parent = containerRef.current?.parentElement;
+    return {
+      width: parent ? parent.clientWidth : 340,
+      height: parent ? parent.clientHeight : 640,
+      minY: 0,
+    };
+  };
 
   // Sync size state if setting changes
   useEffect(() => {
@@ -98,9 +118,9 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
       }
     }
 
-    // Clamp coordinates within phone bounds (width: ~340px, height: ~680px)
-    const newX = Math.max(0, Math.min(340 - widgetPx, initialWidgetPos.current.x + deltaX));
-    const newY = Math.max(40, Math.min(620 - widgetPx, initialWidgetPos.current.y + deltaY));
+    const bounds = getBounds();
+    const newX = Math.max(0, Math.min(bounds.width - widgetPx, initialWidgetPos.current.x + deltaX));
+    const newY = Math.max(bounds.minY, Math.min(bounds.height - widgetPx, initialWidgetPos.current.y + deltaY));
 
     setPosX(newX);
     setPosY(newY);
@@ -119,8 +139,9 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
       } else {
         // Snap to edge animation
         if (settings.snapAnimationEnabled) {
-          const middle = 170;
-          const targetX = posX + widgetPx / 2 < middle ? 8 : 340 - widgetPx - 8;
+          const bounds = getBounds();
+          const middle = bounds.width / 2;
+          const targetX = posX + widgetPx / 2 < middle ? 8 : bounds.width - widgetPx - 8;
           setPosX(targetX);
           onPositionChange(targetX, posY);
         } else {
@@ -172,11 +193,11 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
     <div
       ref={containerRef}
       style={{
-        position: 'absolute',
+        position: isViewportMode ? 'fixed' : 'absolute',
         left: `${posX}px`,
         top: `${posY}px`,
         opacity: settings.opacity,
-        zIndex: 50,
+        zIndex: 9999,
         touchAction: 'none',
       }}
       className={`select-none transition-transform duration-200 ${
@@ -299,6 +320,17 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
               >
                 <Camera className="w-3.5 h-3.5" />
                 {isCameraActive ? "Show Avatar Image" : "Enable Camera Preview"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowContextMenu(false);
+                  onToggleViewportOverlay?.(!isViewportMode);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-left font-medium"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                {isViewportMode ? "Lock Inside Mobile Frame" : "Move Anywhere on Screen"}
               </button>
 
               <button
