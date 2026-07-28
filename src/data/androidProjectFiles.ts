@@ -140,6 +140,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
+    // CameraX core & lifecycle dependencies
+    implementation("androidx.camera:camera-core:1.3.2")
+    implementation("androidx.camera:camera-camera2:1.3.2")
+    implementation("androidx.camera:camera-lifecycle:1.3.2")
+    implementation("androidx.camera:camera-view:1.3.2")
+
     // Image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
@@ -878,5 +884,385 @@ class WidgetViewModel : ViewModel() {
     content: `<resources>
     <string name="app_name">MobileCameraView</string>
 </resources>`
+  },
+  {
+    id: 'tiny-army-activity',
+    path: 'app/src/main/java/com/example/mobilecamera/ui/TinyArmyCameraActivity.kt',
+    name: 'TinyArmyCameraActivity.kt',
+    language: 'kotlin',
+    category: 'kotlin',
+    description: 'CameraX activity binding front camera feed to GLSurfaceView with real-time "Tiny Army" face-tiling effect.',
+    content: `package com.example.mobilecamera.ui
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
+import android.opengl.GLSurfaceView
+import android.os.Bundle
+import android.util.Size
+import android.view.Surface
+import android.widget.ImageButton
+import android.widget.SeekBar
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.core.SurfaceRequest
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContextCompat
+import com.example.mobilecamera.R
+import com.example.mobilecamera.gl.TinyArmyGlRenderer
+import java.util.concurrent.Executors
+
+/**
+ * CameraX Activity rendering a live camera feed into an OpenGL ES 2.0 GLSurfaceView.
+ * Implements the "My Tiny Army" face-duplication filter by tiling the camera texture in real time.
+ */
+class TinyArmyCameraActivity : AppCompatActivity() {
+
+    private lateinit var glSurfaceView: GLSurfaceView
+    private lateinit var renderer: TinyArmyGlRenderer
+    private val cameraExecutor = Executors.newSingleThreadExecutor()
+    private var cameraProvider: ProcessCameraProvider? = null
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            setupCameraX()
+        } else {
+            Toast.makeText(this, "Camera permission required for filter preview.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_tiny_army_camera)
+
+        glSurfaceView = findViewById(R.id.glSurfaceView)
+        val tvGridSize = findViewById<TextView>(R.id.tvGridSize)
+        val seekBarGrid = findViewById<SeekBar>(R.id.seekBarGrid)
+        val btnSwitchCamera = findViewById<ImageButton>(R.id.btnSwitchCamera)
+
+        // Initialize OpenGL ES 2.0 context
+        glSurfaceView.setEGLContextClientVersion(2)
+        renderer = TinyArmyGlRenderer { surfaceTexture ->
+            // Triggered when OpenGL SurfaceTexture is ready for CameraX frame delivery
+            bindCameraToSurfaceTexture(surfaceTexture)
+        }
+        glSurfaceView.setRenderer(renderer)
+        glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+
+        // Slider for real-time grid tile count adjustment (2x2 to 6x6)
+        seekBarGrid.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val gridTiles = progress + 2 // range 2 to 6
+                tvGridSize.text = "Grid: \${gridTiles}x\${gridTiles} Army"
+                renderer.setTileCount(gridTiles.toFloat())
+                glSurfaceView.requestRender()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        // Camera selector toggle
+        btnSwitchCamera.setOnClickListener {
+            renderer.toggleLensFacing()
+            setupCameraX()
+        }
+
+        // Check camera permissions
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            setupCameraX()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun setupCameraX() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            renderer.getSurfaceTexture()?.let { st ->
+                bindCameraToSurfaceTexture(st)
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun bindCameraToSurfaceTexture(surfaceTexture: SurfaceTexture) {
+        val provider = cameraProvider ?: return
+        provider.unbindAll()
+
+        val cameraSelector = if (renderer.isFrontCamera) {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } else {
+            CameraSelector.DEFAULT_BACK_CAMERA
+        }
+
+        val preview = Preview.Builder()
+            .setTargetResolution(Size(1280, 720))
+            .build()
+
+        surfaceTexture.setDefaultBufferSize(1280, 720)
+        surfaceTexture.setOnFrameAvailableListener {
+            glSurfaceView.requestRender()
+        }
+
+        preview.setSurfaceProvider { request ->
+            val surface = Surface(surfaceTexture)
+            request.provideSurface(surface, cameraExecutor) {
+                surface.release()
+            }
+        }
+
+        try {
+            provider.bindToLifecycle(this, cameraSelector, preview)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        glSurfaceView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        glSurfaceView.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+    }
+}`
+  },
+  {
+    id: 'tiny-army-renderer',
+    path: 'app/src/main/java/com/example/mobilecamera/gl/TinyArmyGlRenderer.kt',
+    name: 'TinyArmyGlRenderer.kt',
+    language: 'kotlin',
+    category: 'kotlin',
+    description: 'OpenGL ES 2.0 Renderer handling GL_TEXTURE_EXTERNAL_OES texture binding & uniform parameters.',
+    content: `package com.example.mobilecamera.gl
+
+import android.graphics.SurfaceTexture
+import android.opengl.GLES11Ext
+import android.opengl.GLES20
+import android.opengl.GLSurfaceView
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
+
+/**
+ * OpenGL ES 2.0 Renderer delivering real-time fragment shader transformations for CameraX texture.
+ * Applies coordinate tiling matrix fract(vTexCoord * tileCount) for "My Tiny Army" face duplication filter.
+ */
+class TinyArmyGlRenderer(
+    private val onSurfaceTextureCreated: (SurfaceTexture) -> Unit
+) : GLSurfaceView.Renderer {
+
+    private var textureId: Int = 0
+    private var surfaceTexture: SurfaceTexture? = null
+
+    private var programId: Int = 0
+    private var uTileCountHandle: Int = -1
+    private var uTextureHandle: Int = -1
+
+    var isFrontCamera = true
+        private set
+
+    private var tileCount = 3.0f
+
+    // Full screen quad geometry vertices [-1..1]
+    private val vertexCoords = floatArrayOf(
+        -1.0f, -1.0f,
+         1.0f, -1.0f,
+        -1.0f,  1.0f,
+         1.0f,  1.0f
+    )
+
+    // Texture coordinates [0..1]
+    private val textureCoords = floatArrayOf(
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 0.0f
+    )
+
+    private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertexCoords.size * 4)
+        .order(ByteOrder.nativeOrder())
+        .asFloatBuffer()
+        .apply { put(vertexCoords); position(0) }
+
+    private val textureBuffer: FloatBuffer = ByteBuffer.allocateDirect(textureCoords.size * 4)
+        .order(ByteOrder.nativeOrder())
+        .asFloatBuffer()
+        .apply { put(textureCoords); position(0) }
+
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
+
+        // 1. Generate OES external texture ID
+        val textures = IntArray(1)
+        GLES20.glGenTextures(1, textures, 0)
+        textureId = textures[0]
+
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+
+        // 2. Attach SurfaceTexture to texture ID
+        surfaceTexture = SurfaceTexture(textureId)
+        onSurfaceTextureCreated(surfaceTexture!!)
+
+        // 3. Compile and link GLSL shaders
+        programId = createProgram(VERTEX_SHADER, FRAGMENT_SHADER)
+        uTileCountHandle = GLES20.glGetUniformLocation(programId, "uTileCount")
+        uTextureHandle = GLES20.glGetUniformLocation(programId, "uTexture")
+    }
+
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        GLES20.glViewport(0, 0, width, height)
+    }
+
+    override fun onDrawFrame(gl: GL10?) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        surfaceTexture?.updateTexImage()
+
+        GLES20.glUseProgram(programId)
+
+        // Pass uniform tile count parameter to fragment shader
+        GLES20.glUniform1f(uTileCountHandle, tileCount)
+
+        // Bind OES texture
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId)
+        GLES20.glUniform1i(uTextureHandle, 0)
+
+        // Pass vertex & texture attribute buffers
+        val positionHandle = GLES20.glGetAttribLocation(programId, "aPosition")
+        GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 8, vertexBuffer)
+
+        val texCoordHandle = GLES20.glGetAttribLocation(programId, "aTexCoord")
+        GLES20.glEnableVertexAttribArray(texCoordHandle)
+        GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 8, textureBuffer)
+
+        // Draw quad
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+
+        GLES20.glDisableVertexAttribArray(positionHandle)
+        GLES20.glDisableVertexAttribArray(texCoordHandle)
+    }
+
+    fun setTileCount(count: Float) {
+        tileCount = count
+    }
+
+    fun toggleLensFacing() {
+        isFrontCamera = !isFrontCamera
+    }
+
+    fun getSurfaceTexture(): SurfaceTexture? = surfaceTexture
+
+    private fun createProgram(vShader: String, fShader: String): Int {
+        val vertex = loadShader(GLES20.GL_VERTEX_SHADER, vShader)
+        val fragment = loadShader(GLES20.GL_FRAGMENT_SHADER, fShader)
+        val program = GLES20.glCreateProgram()
+        GLES20.glAttachShader(program, vertex)
+        GLES20.glAttachShader(program, fragment)
+        GLES20.glLinkProgram(program)
+        return program
+    }
+
+    private fun loadShader(type: Int, shaderCode: String): Int {
+        val shader = GLES20.glCreateShader(type)
+        GLES20.glShaderSource(shader, shaderCode)
+        GLES20.glCompileShader(shader)
+        return shader
+    }
+
+    companion object {
+        private const val VERTEX_SHADER = """
+            attribute vec4 aPosition;
+            attribute vec2 aTexCoord;
+            varying vec2 vTexCoord;
+            void main() {
+                gl_Position = aPosition;
+                vTexCoord = aTexCoord;
+            }
+        """
+
+        private const val FRAGMENT_SHADER = """
+            #extension GL_OES_EGL_image_external : require
+            precision mediump float;
+            varying vec2 vTexCoord;
+            uniform samplerExternalOES uTexture;
+            uniform float uTileCount;
+
+            void main() {
+                // Repeat texture coordinates in a grid (e.g. 3x3)
+                vec2 tiledCoord = fract(vTexCoord * uTileCount);
+
+                // Sample texture with repeated tiled coordinates
+                vec4 texColor = texture2D(uTexture, tiledCoord);
+
+                // Add subtle grid border line highlight
+                vec2 border = step(vec2(0.03), tiledCoord) * step(tiledCoord, vec2(0.97));
+                float isInner = border.x * border.y;
+                vec3 finalColor = mix(vec3(0.3, 0.4, 0.9), texColor.rgb, isInner);
+
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        """
+    }
+}`
+  },
+  {
+    id: 'tiny-army-shader',
+    path: 'app/src/main/shaders/tiny_army_fragment_shader.glsl',
+    name: 'tiny_army_fragment_shader.glsl',
+    language: 'glsl',
+    category: 'layout',
+    description: 'OpenGL ES GLSL Fragment Shader for face duplication tiling ("My Tiny Army" filter).',
+    content: `/*
+ * GLSL Fragment Shader - "My Tiny Army" Face Duplication Filter
+ * Repeats incoming CameraX surface texture (GL_TEXTURE_EXTERNAL_OES) across an N x N matrix grid.
+ */
+#extension GL_OES_EGL_image_external : require
+precision mediump float;
+
+varying vec2 vTexCoord;
+uniform samplerExternalOES uTexture;
+uniform float uTileCount; // Grid count (e.g., 2.0, 3.0, 4.0)
+
+void main() {
+    // 1. Scale texture coordinates by uTileCount and extract fractional part to repeat image
+    vec2 tiledCoord = fract(vTexCoord * uTileCount);
+
+    // 2. Sample live camera frame from external OES sampler
+    vec4 color = texture2D(uTexture, tiledCoord);
+
+    // 3. Vignette soft shadow per tile
+    vec2 dist = abs(tiledCoord - vec2(0.5));
+    float vignette = 1.0 - smoothstep(0.35, 0.5, length(dist));
+    color.rgb *= mix(0.75, 1.0, vignette);
+
+    // 4. Subtle neon border separator between tiled faces
+    vec2 border = step(vec2(0.02), tiledCoord) * step(tiledCoord, vec2(0.98));
+    float borderFactor = border.x * border.y;
+    vec3 borderColor = vec3(0.31, 0.27, 0.90); // Indigo glow
+
+    gl_FragColor = vec4(mix(borderColor, color.rgb, borderFactor), 1.0);
+}`
   }
 ];
+

@@ -182,6 +182,27 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
                   </button>
 
                   <button
+                    onClick={() => {
+                      const nextTiny = !settings.isTinyArmyEnabled;
+                      onUpdateSettings({
+                        isTinyArmyEnabled: nextTiny,
+                        isCameraModeEnabled: true,
+                      });
+                      if (!widgetState.isForegroundServiceRunning) {
+                        handleStartService();
+                      }
+                    }}
+                    className={`w-full py-2.5 font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-xs cursor-pointer border ${
+                      settings.isTinyArmyEnabled
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-400/50'
+                        : 'bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-300 border-indigo-700/50'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-300 animate-pulse" />
+                    <span>{settings.isTinyArmyEnabled ? 'Active: "My Tiny Army" 3x3 Filter' : 'Launch "My Tiny Army" Tiled Filter'}</span>
+                  </button>
+
+                  <button
                     onClick={() => setCurrentScreen('settings')}
                     className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-98 text-xs cursor-pointer"
                   >
@@ -256,6 +277,7 @@ export const PhoneSimulator: React.FC<PhoneSimulatorProps> = ({
               onPositionChange={(x, y) => onUpdateSettings({ positionX: x, positionY: y })}
               onToggleCameraMode={(enabled) => onUpdateSettings({ isCameraModeEnabled: enabled })}
               onToggleViewportOverlay={(enabled) => onUpdateSettings({ isViewportOverlay: enabled })}
+              onToggleTinyArmy={(enabled) => onUpdateSettings({ isTinyArmyEnabled: enabled, isCameraModeEnabled: true })}
               onUploadImage={(newUrl) => onUpdateSettings({ selectedImageUrl: newUrl })}
             />
           )}

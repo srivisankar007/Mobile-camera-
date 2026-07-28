@@ -11,6 +11,8 @@ export interface WidgetSettings {
   badgeCount: number;
   selectedImageUrl: string;
   isCameraModeEnabled: boolean;
+  isTinyArmyEnabled?: boolean;
+  tinyArmyTileCount?: number; // 2 to 6 grid size
   isViewportOverlay?: boolean; // When true, floats over the entire screen/page window
 }
 
@@ -18,7 +20,7 @@ export interface AndroidFile {
   id: string;
   path: string;
   name: string;
-  language: 'kotlin' | 'xml' | 'groovy' | 'json' | 'properties';
+  language: 'kotlin' | 'xml' | 'groovy' | 'json' | 'properties' | 'glsl';
   category: 'manifest' | 'kotlin' | 'layout' | 'values' | 'gradle' | 'drawable';
   content: string;
   description: string;

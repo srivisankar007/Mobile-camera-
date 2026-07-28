@@ -11,6 +11,7 @@ interface FloatingWidgetOverlayProps {
   onPositionChange: (x: number, y: number) => void;
   onToggleCameraMode?: (enabled: boolean) => void;
   onToggleViewportOverlay?: (enabled: boolean) => void;
+  onToggleTinyArmy?: (enabled: boolean, tileCount?: number) => void;
   onUploadImage?: (newUrl: string) => void;
 }
 
@@ -22,6 +23,7 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
   onPositionChange,
   onToggleCameraMode,
   onToggleViewportOverlay,
+  onToggleTinyArmy,
   onUploadImage,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -263,9 +265,31 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
           }`}
         >
           {isCameraActive ? (
-            /* Live Camera Face Preview / Uploaded Photo */
+            /* Live Camera Face Preview / Tiny Army Tiled Filter */
             <div className="relative w-full h-full rounded-full bg-slate-950 overflow-hidden flex items-center justify-center">
-              {useWebcamStream ? (
+              {settings.isTinyArmyEnabled ? (
+                <div className="grid grid-cols-3 grid-rows-3 w-full h-full p-0.5 gap-0.5 bg-indigo-950/80 rounded-full overflow-hidden">
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} className="relative overflow-hidden rounded-xs border border-indigo-500/30">
+                      {useWebcamStream ? (
+                        <video
+                          ref={i === 0 ? videoRef : undefined}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover -scale-x-100 pointer-events-none"
+                        />
+                      ) : (
+                        <img
+                          src={settings.selectedImageUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'}
+                          alt={`Tiny Army Tile ${i}`}
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : useWebcamStream ? (
                 <video
                   ref={videoRef}
                   autoPlay
@@ -281,15 +305,15 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
                 />
               )}
               
-              {/* Camera Gridline Overlay */}
+              {/* Camera Gridline / Filter Overlay */}
               <div className="absolute inset-0 border border-emerald-400/30 rounded-full flex items-center justify-center pointer-events-none">
                 <Focus className="w-5 h-5 text-emerald-400/80 animate-pulse" />
               </div>
 
-              {/* REC Live Indicator Badge */}
+              {/* REC / Filter Badge */}
               <div className="absolute top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-red-600/90 text-[8px] font-mono font-bold text-white rounded-full flex items-center gap-1 shadow-sm">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                <span>REC</span>
+                <span>{settings.isTinyArmyEnabled ? '3x3 ARMY' : 'REC'}</span>
               </div>
             </div>
           ) : (
@@ -370,6 +394,17 @@ export const FloatingWidgetOverlay: React.FC<FloatingWidgetOverlayProps> = ({
               >
                 <Camera className="w-3.5 h-3.5" />
                 {isCameraActive ? "Show Avatar Image" : "Enable Camera Preview"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowContextMenu(false);
+                  onToggleTinyArmy?.(!settings.isTinyArmyEnabled);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-600/30 rounded-lg transition-colors text-left font-medium text-indigo-300"
+              >
+                <Aperture className="w-3.5 h-3.5 text-indigo-400 animate-spin-slow" />
+                {settings.isTinyArmyEnabled ? "Disable Tiny Army Filter" : "Enable 'My Tiny Army' Filter"}
               </button>
 
               <button

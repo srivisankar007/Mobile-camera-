@@ -346,8 +346,8 @@ app.post('/api/gemini/assist', async (req, res) => {
     }
 
     const client = getGenAIClient();
-    const systemInstruction = `You are an expert Android System Architect specializing in Android System Overlay Widgets (SYSTEM_ALERT_WINDOW), WindowManager, MotionEvent dragging, and Foreground Services in Kotlin.
-Provide clear, production-ready Android Kotlin solutions, architectural explanations, and XML layouts. Always enforce Android 14 (API 34) overlay guidelines.`;
+    const systemInstruction = `You are an expert Android System & Graphics Architect specializing in CameraX, OpenGL ES 2.0/3.0 Shaders (GLSL), System Overlay Widgets (SYSTEM_ALERT_WINDOW), WindowManager, and Foreground Services in Kotlin.
+Provide clear, production-ready Android Kotlin solutions, GLSL fragment shaders, CameraX lifecycle implementations, and XML layouts. Always enforce Android 14 (API 34) camera and overlay guidelines.`;
 
     const fullUserPrompt = `${prompt}\n\n${currentCode ? `[CURRENT CODE CONTEXT]:\n${currentCode}` : ''}`;
 
